@@ -79,8 +79,14 @@ BOOST_AUTO_TEST_CASE(base58_DecodeBase58)
 BOOST_AUTO_TEST_CASE(base58_keys_valid_parse)
 {
     UniValue tests = read_json(std::string(json_tests::base58_keys_valid, json_tests::base58_keys_valid + sizeof(json_tests::base58_keys_valid)));
+<<<<<<< HEAD
     CKey privkey;
     CTxDestination destination;
+=======
+    std::vector<unsigned char> result;
+    CBitcoinSecret secret;
+    CBitcoinAddress addr;
+>>>>>>> parent of 78344bb4e... Auto merge of #3228 - str4d:3058-taddr-encoding-refactor, r=str4d
     SelectParams(CBaseChainParams::MAIN);
 
     for (size_t idx = 0; idx < tests.size(); idx++) {
@@ -103,12 +109,20 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_parse)
         if (isPrivkey) {
             bool isCompressed = find_value(metadata, "isCompressed").get_bool();
             // Must be valid private key
+<<<<<<< HEAD
             privkey = DecodeSecret(exp_base58string);
             BOOST_CHECK_MESSAGE(privkey.IsValid(), "!IsValid:" + strTest);
+=======
+            // Note: CBitcoinSecret::SetString tests isValid, whereas CBitcoinAddress does not!
+            BOOST_CHECK_MESSAGE(secret.SetString(exp_base58string), "!SetString:"+ strTest);
+            BOOST_CHECK_MESSAGE(secret.IsValid(), "!IsValid:" + strTest);
+            CKey privkey = secret.GetKey();
+>>>>>>> parent of 78344bb4e... Auto merge of #3228 - str4d:3058-taddr-encoding-refactor, r=str4d
             BOOST_CHECK_MESSAGE(privkey.IsCompressed() == isCompressed, "compressed mismatch:" + strTest);
             BOOST_CHECK_MESSAGE(privkey.size() == exp_payload.size() && std::equal(privkey.begin(), privkey.end(), exp_payload.begin()), "key mismatch:" + strTest);
 
             // Private key must be invalid public key
+<<<<<<< HEAD
             destination = DecodeDestination(exp_base58string);
             BOOST_CHECK_MESSAGE(!IsValidDestination(destination), "IsValid privkey as pubkey:" + strTest);
         } else {
@@ -117,6 +131,20 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_parse)
             CScript script = GetScriptForDestination(destination);
             BOOST_CHECK_MESSAGE(IsValidDestination(destination), "!IsValid:" + strTest);
             BOOST_CHECK_EQUAL(HexStr(script), HexStr(exp_payload));
+=======
+            addr.SetString(exp_base58string);
+            BOOST_CHECK_MESSAGE(!addr.IsValid(), "IsValid privkey as pubkey:" + strTest);
+        }
+        else
+        {
+            std::string exp_addrType = find_value(metadata, "addrType").get_str(); // "script" or "pubkey"
+            // Must be valid public key
+            BOOST_CHECK_MESSAGE(addr.SetString(exp_base58string), "SetString:" + strTest);
+            BOOST_CHECK_MESSAGE(addr.IsValid(), "!IsValid:" + strTest);
+            BOOST_CHECK_MESSAGE(addr.IsScript() == (exp_addrType == "script"), "isScript mismatch" + strTest);
+            CTxDestination dest = addr.Get();
+            BOOST_CHECK_MESSAGE(boost::apply_visitor(TestAddrTypeVisitor(exp_addrType), dest), "addrType mismatch" + strTest);
+>>>>>>> parent of 78344bb4e... Auto merge of #3228 - str4d:3058-taddr-encoding-refactor, r=str4d
 
             // Public key must be invalid private key
             privkey = DecodeSecret(exp_base58string);
@@ -156,12 +184,40 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_gen)
             BOOST_CHECK_MESSAGE(EncodeSecret(key) == exp_base58string, "result mismatch: " + strTest);
         } else {
             CTxDestination dest;
+<<<<<<< HEAD
             CScript exp_script(exp_payload.begin(), exp_payload.end());
             ExtractDestination(exp_script, dest);
             std::string address = EncodeDestination(dest);
             BOOST_CHECK_EQUAL(address, exp_base58string);
+=======
+            if(exp_addrType == "pubkey")
+            {
+                dest = CKeyID(uint160(exp_payload));
+            }
+            else if(exp_addrType == "script")
+            {
+                dest = CScriptID(uint160(exp_payload));
+            }
+            else if(exp_addrType == "none")
+            {
+                dest = CNoDestination();
+            }
+            else
+            {
+                BOOST_ERROR("Bad addrtype: " << strTest);
+                continue;
+            }
+            CBitcoinAddress addrOut;
+            BOOST_CHECK_MESSAGE(addrOut.Set(dest), "encode dest: " + strTest);
+            BOOST_CHECK_MESSAGE(addrOut.ToString() == exp_base58string, "mismatch: " + strTest);
+>>>>>>> parent of 78344bb4e... Auto merge of #3228 - str4d:3058-taddr-encoding-refactor, r=str4d
         }
     }
+
+    // Visiting a CNoDestination must fail
+    CBitcoinAddress dummyAddr;
+    CTxDestination nodest = CNoDestination();
+    BOOST_CHECK(!dummyAddr.Set(nodest));
 
     SelectParams(CBaseChainParams::MAIN);
 }
@@ -170,8 +226,14 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_gen)
 BOOST_AUTO_TEST_CASE(base58_keys_invalid)
 {
     UniValue tests = read_json(std::string(json_tests::base58_keys_invalid, json_tests::base58_keys_invalid + sizeof(json_tests::base58_keys_invalid))); // Negative testcases
+<<<<<<< HEAD
     CKey privkey;
     CTxDestination destination;
+=======
+    std::vector<unsigned char> result;
+    CBitcoinSecret secret;
+    CBitcoinAddress addr;
+>>>>>>> parent of 78344bb4e... Auto merge of #3228 - str4d:3058-taddr-encoding-refactor, r=str4d
 
     for (size_t idx = 0; idx < tests.size(); idx++) {
         UniValue test = tests[idx];
@@ -184,10 +246,17 @@ BOOST_AUTO_TEST_CASE(base58_keys_invalid)
         std::string exp_base58string = test[0].get_str();
 
         // must be invalid as public and as private key
+<<<<<<< HEAD
         destination = DecodeDestination(exp_base58string);
         BOOST_CHECK_MESSAGE(!IsValidDestination(destination), "IsValid pubkey:" + strTest);
         privkey = DecodeSecret(exp_base58string);
         BOOST_CHECK_MESSAGE(!privkey.IsValid(), "IsValid privkey:" + strTest);
+=======
+        addr.SetString(exp_base58string);
+        BOOST_CHECK_MESSAGE(!addr.IsValid(), "IsValid pubkey:" + strTest);
+        secret.SetString(exp_base58string);
+        BOOST_CHECK_MESSAGE(!secret.IsValid(), "IsValid privkey:" + strTest);
+>>>>>>> parent of 78344bb4e... Auto merge of #3228 - str4d:3058-taddr-encoding-refactor, r=str4d
     }
 }
 

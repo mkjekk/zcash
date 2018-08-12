@@ -402,9 +402,9 @@ boost::optional<CScript> GetMinerScriptPubKey()
 #endif
 {
     CKeyID keyID;
-    CTxDestination addr = DecodeDestination(GetArg("-mineraddress", ""));
-    if (IsValidDestination(addr)) {
-        keyID = boost::get<CKeyID>(addr);
+    CBitcoinAddress addr;
+    if (addr.SetString(GetArg("-mineraddress", ""))) {
+        addr.GetKeyID(keyID);
     } else {
 #ifdef ENABLE_WALLET
         CPubKey pubkey;
