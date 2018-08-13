@@ -13,6 +13,7 @@
 #include "zcash/Address.hpp"
 #include "zcash/JoinSplit.hpp"
 
+#include <array>
 #include <tuple>
 #include <unordered_map>
 
@@ -44,7 +45,7 @@ struct MergeToAddressJSInfo {
 
 // A struct to help us track the witness and anchor for a given JSOutPoint
 struct MergeToAddressWitnessAnchorData {
-    boost::optional<ZCIncrementalWitness> witness;
+    boost::optional<SproutWitness> witness;
     uint256 anchor;
 };
 
@@ -99,7 +100,7 @@ private:
 
     CTransaction tx_;
 
-    boost::array<unsigned char, ZC_MEMO_SIZE> get_memo_from_hex_string(std::string s);
+    std::array<unsigned char, ZC_MEMO_SIZE> get_memo_from_hex_string(std::string s);
     bool main_impl();
 
     // JoinSplit without any input notes to spend
@@ -111,7 +112,7 @@ private:
     // JoinSplit where you have the witnesses and anchor
     UniValue perform_joinsplit(
         MergeToAddressJSInfo& info,
-        std::vector<boost::optional<ZCIncrementalWitness>> witnesses,
+        std::vector<boost::optional<SproutWitness>> witnesses,
         uint256 anchor);
 
     void sign_send_raw_transaction(UniValue obj); // throws exception if there was an error
@@ -149,7 +150,7 @@ public:
 
     // Delegated methods
 
-    boost::array<unsigned char, ZC_MEMO_SIZE> get_memo_from_hex_string(std::string s)
+    std::array<unsigned char, ZC_MEMO_SIZE> get_memo_from_hex_string(std::string s)
     {
         return delegate->get_memo_from_hex_string(s);
     }
@@ -171,7 +172,7 @@ public:
 
     UniValue perform_joinsplit(
         MergeToAddressJSInfo& info,
-        std::vector<boost::optional<ZCIncrementalWitness>> witnesses,
+        std::vector<boost::optional<SproutWitness>> witnesses,
         uint256 anchor)
     {
         return delegate->perform_joinsplit(info, witnesses, anchor);

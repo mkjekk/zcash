@@ -17,6 +17,8 @@
 
 using namespace std;
 
+// NOTE: Per issue #3277, do not use the prefix 'X' or 'x' as they were
+// previously used by DB_SAPLING_ANCHOR and DB_BEST_SAPLING_ANCHOR.
 static const char DB_SPROUT_ANCHOR = 'A';
 static const char DB_SAPLING_ANCHOR = 'Z';
 static const char DB_NULLIFIER = 's';
@@ -42,9 +44,9 @@ CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(Get
 }
 
 
-bool CCoinsViewDB::GetSproutAnchorAt(const uint256 &rt, ZCIncrementalMerkleTree &tree) const {
-    if (rt == ZCIncrementalMerkleTree::empty_root()) {
-        ZCIncrementalMerkleTree new_tree;
+bool CCoinsViewDB::GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const {
+    if (rt == SproutMerkleTree::empty_root()) {
+        SproutMerkleTree new_tree;
         tree = new_tree;
         return true;
     }
@@ -54,9 +56,9 @@ bool CCoinsViewDB::GetSproutAnchorAt(const uint256 &rt, ZCIncrementalMerkleTree 
     return read;
 }
 
-bool CCoinsViewDB::GetSaplingAnchorAt(const uint256 &rt, ZCSaplingIncrementalMerkleTree &tree) const {
-    if (rt == ZCSaplingIncrementalMerkleTree::empty_root()) {
-        ZCSaplingIncrementalMerkleTree new_tree;
+bool CCoinsViewDB::GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &tree) const {
+    if (rt == SaplingMerkleTree::empty_root()) {
+        SaplingMerkleTree new_tree;
         tree = new_tree;
         return true;
     }
@@ -103,11 +105,11 @@ uint256 CCoinsViewDB::GetBestAnchor(ShieldedType type) const {
     switch (type) {
         case SPROUT:
             if (!db.Read(DB_BEST_SPROUT_ANCHOR, hashBestAnchor))
-                return ZCIncrementalMerkleTree::empty_root();
+                return SproutMerkleTree::empty_root();
             break;
         case SAPLING:
             if (!db.Read(DB_BEST_SAPLING_ANCHOR, hashBestAnchor))
-                return ZCSaplingIncrementalMerkleTree::empty_root();
+                return SaplingMerkleTree::empty_root();
             break;
         default:
             throw runtime_error("Unknown shielded type");
@@ -174,17 +176,17 @@ bool CCoinsViewDB::BatchWrite(CCoinsMap &mapCoins,
         mapCoins.erase(itOld);
     }
 
-    ::BatchWriteAnchors<CAnchorsSproutMap, CAnchorsSproutMap::iterator, CAnchorsSproutCacheEntry, ZCIncrementalMerkleTree>(batch, mapSproutAnchors, DB_SPROUT_ANCHOR);
-    ::BatchWriteAnchors<CAnchorsSaplingMap, CAnchorsSaplingMap::iterator, CAnchorsSaplingCacheEntry, ZCSaplingIncrementalMerkleTree>(batch, mapSaplingAnchors, DB_SAPLING_ANCHOR);
+    ::BatchWriteAnchors<CAnchorsSproutMap, CAnchorsSproutMap::iterator, CAnchorsSproutCacheEntry, SproutMerkleTree>(batch, mapSproutAnchors, DB_SPROUT_ANCHOR);
+    ::BatchWriteAnchors<CAnchorsSaplingMap, CAnchorsSaplingMap::iterator, CAnchorsSaplingCacheEntry, SaplingMerkleTree>(batch, mapSaplingAnchors, DB_SAPLING_ANCHOR);
 
     ::BatchWriteNullifiers(batch, mapSproutNullifiers, DB_NULLIFIER);
     ::BatchWriteNullifiers(batch, mapSaplingNullifiers, DB_SAPLING_NULLIFIER);
 
     if (!hashBlock.IsNull())
         batch.Write(DB_BEST_BLOCK, hashBlock);
-    if (!hashSproutAnchor.IsNull() && hashSproutAnchor != ZCIncrementalMerkleTree::empty_root())
+    if (!hashSproutAnchor.IsNull() && hashSproutAnchor != SproutMerkleTree::empty_root())
         batch.Write(DB_BEST_SPROUT_ANCHOR, hashSproutAnchor);
-    if (!hashSaplingAnchor.IsNull() && hashSaplingAnchor != ZCSaplingIncrementalMerkleTree::empty_root())
+    if (!hashSaplingAnchor.IsNull() && hashSaplingAnchor != SaplingMerkleTree::empty_root())
         batch.Write(DB_BEST_SAPLING_ANCHOR, hashSaplingAnchor);
 
     LogPrint("coindb", "Committing %u changed transactions (out of %u) to coin database...\n", (unsigned int)changed, (unsigned int)count);

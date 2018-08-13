@@ -6,11 +6,14 @@
 
 #include "consensus/upgrades.h"
 
+#include <array>
+
 CWalletTx GetValidReceive(ZCJoinSplit& params,
                           const libzcash::SproutSpendingKey& sk, CAmount value,
-                          bool randomInputs) {
+                          bool randomInputs,
+                          int32_t version /* = 2 */) {
     CMutableTransaction mtx;
-    mtx.nVersion = 2; // Enable JoinSplits
+    mtx.nVersion = version;
     mtx.vin.resize(2);
     if (randomInputs) {
         mtx.vin[0].prevout.hash = GetRandHash();
@@ -28,12 +31,12 @@ CWalletTx GetValidReceive(ZCJoinSplit& params,
     crypto_sign_keypair(joinSplitPubKey.begin(), joinSplitPrivKey);
     mtx.joinSplitPubKey = joinSplitPubKey;
 
-    boost::array<libzcash::JSInput, 2> inputs = {
+    std::array<libzcash::JSInput, 2> inputs = {
         libzcash::JSInput(), // dummy input
         libzcash::JSInput() // dummy input
     };
 
-    boost::array<libzcash::JSOutput, 2> outputs = {
+    std::array<libzcash::JSOutput, 2> outputs = {
         libzcash::JSOutput(sk.address(), value),
         libzcash::JSOutput(sk.address(), value)
     };
@@ -43,6 +46,12 @@ CWalletTx GetValidReceive(ZCJoinSplit& params,
     JSDescription jsdesc {false, params, mtx.joinSplitPubKey, rt,
                           inputs, outputs, 2*value, 0, false};
     mtx.vjoinsplit.push_back(jsdesc);
+
+    if (version >= 4) {
+        // Shielded Output
+        OutputDescription od;
+        mtx.vShieldedOutput.push_back(od);
+    }
 
     // Empty output script.
     uint32_t consensusBranchId = SPROUT_BRANCH_ID;
@@ -90,7 +99,7 @@ CWalletTx GetValidSpend(ZCJoinSplit& params,
     mtx.joinSplitPubKey = joinSplitPubKey;
 
     // Fake tree for the unused witness
-    ZCIncrementalMerkleTree tree;
+    SproutMerkleTree tree;
 
     libzcash::JSOutput dummyout;
     libzcash::JSInput dummyin;
@@ -111,12 +120,12 @@ CWalletTx GetValidSpend(ZCJoinSplit& params,
 
     tree.append(note.cm());
 
-    boost::array<libzcash::JSInput, 2> inputs = {
+    std::array<libzcash::JSInput, 2> inputs = {
         libzcash::JSInput(tree.witness(), note, sk),
         dummyin
     };
 
-    boost::array<libzcash::JSOutput, 2> outputs = {
+    std::array<libzcash::JSOutput, 2> outputs = {
         dummyout, // dummy output
         libzcash::JSOutput() // dummy output
     };

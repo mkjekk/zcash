@@ -13,6 +13,7 @@
 #include "wallet.h"
 #include "paymentdisclosure.h"
 
+#include <array>
 #include <unordered_map>
 #include <tuple>
 
@@ -44,7 +45,7 @@ struct AsyncJoinSplitInfo
 
 // A struct to help us track the witness and anchor for a given JSOutPoint
 struct WitnessAnchorData {
-	boost::optional<ZCIncrementalWitness> witness;
+	boost::optional<SproutWitness> witness;
 	uint256 anchor;
 };
 
@@ -99,7 +100,7 @@ private:
     void add_taddr_outputs_to_tx();
     bool find_unspent_notes();
     bool find_utxos(bool fAcceptCoinbase);
-    boost::array<unsigned char, ZC_MEMO_SIZE> get_memo_from_hex_string(std::string s);
+    std::array<unsigned char, ZC_MEMO_SIZE> get_memo_from_hex_string(std::string s);
     bool main_impl();
 
     // JoinSplit without any input notes to spend
@@ -111,7 +112,7 @@ private:
     // JoinSplit where you have the witnesses and anchor
     UniValue perform_joinsplit(
         AsyncJoinSplitInfo & info,
-        std::vector<boost::optional < ZCIncrementalWitness>> witnesses,
+        std::vector<boost::optional < SproutWitness>> witnesses,
         uint256 anchor);
 
     void sign_send_raw_transaction(UniValue obj);     // throws exception if there was an error
@@ -154,7 +155,7 @@ public:
         return delegate->find_utxos(fAcceptCoinbase);
     }
     
-    boost::array<unsigned char, ZC_MEMO_SIZE> get_memo_from_hex_string(std::string s) {
+    std::array<unsigned char, ZC_MEMO_SIZE> get_memo_from_hex_string(std::string s) {
         return delegate->get_memo_from_hex_string(s);
     }
     
@@ -172,7 +173,7 @@ public:
 
     UniValue perform_joinsplit(
         AsyncJoinSplitInfo & info,
-        std::vector<boost::optional < ZCIncrementalWitness>> witnesses,
+        std::vector<boost::optional < SproutWitness>> witnesses,
         uint256 anchor)
     {
         return delegate->perform_joinsplit(info, witnesses, anchor);

@@ -42,8 +42,8 @@ bool CCoins::Spend(uint32_t nPos)
     Cleanup();
     return true;
 }
-bool CCoinsView::GetSproutAnchorAt(const uint256 &rt, ZCIncrementalMerkleTree &tree) const { return false; }
-bool CCoinsView::GetSaplingAnchorAt(const uint256 &rt, ZCSaplingIncrementalMerkleTree &tree) const { return false; }
+bool CCoinsView::GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const { return false; }
+bool CCoinsView::GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &tree) const { return false; }
 bool CCoinsView::GetNullifier(const uint256 &nullifier, ShieldedType type) const { return false; }
 bool CCoinsView::GetCoins(const uint256 &txid, CCoins &coins) const { return false; }
 bool CCoinsView::HaveCoins(const uint256 &txid) const { return false; }
@@ -62,8 +62,8 @@ bool CCoinsView::GetStats(CCoinsStats &stats) const { return false; }
 
 CCoinsViewBacked::CCoinsViewBacked(CCoinsView *viewIn) : base(viewIn) { }
 
-bool CCoinsViewBacked::GetSproutAnchorAt(const uint256 &rt, ZCIncrementalMerkleTree &tree) const { return base->GetSproutAnchorAt(rt, tree); }
-bool CCoinsViewBacked::GetSaplingAnchorAt(const uint256 &rt, ZCSaplingIncrementalMerkleTree &tree) const { return base->GetSaplingAnchorAt(rt, tree); }
+bool CCoinsViewBacked::GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const { return base->GetSproutAnchorAt(rt, tree); }
+bool CCoinsViewBacked::GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &tree) const { return base->GetSaplingAnchorAt(rt, tree); }
 bool CCoinsViewBacked::GetNullifier(const uint256 &nullifier, ShieldedType type) const { return base->GetNullifier(nullifier, type); }
 bool CCoinsViewBacked::GetCoins(const uint256 &txid, CCoins &coins) const { return base->GetCoins(txid, coins); }
 bool CCoinsViewBacked::HaveCoins(const uint256 &txid) const { return base->HaveCoins(txid); }
@@ -117,7 +117,7 @@ CCoinsMap::const_iterator CCoinsViewCache::FetchCoins(const uint256 &txid) const
 }
 
 
-bool CCoinsViewCache::GetSproutAnchorAt(const uint256 &rt, ZCIncrementalMerkleTree &tree) const {
+bool CCoinsViewCache::GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const {
     CAnchorsSproutMap::const_iterator it = cacheSproutAnchors.find(rt);
     if (it != cacheSproutAnchors.end()) {
         if (it->second.entered) {
@@ -140,7 +140,7 @@ bool CCoinsViewCache::GetSproutAnchorAt(const uint256 &rt, ZCIncrementalMerkleTr
     return true;
 }
 
-bool CCoinsViewCache::GetSaplingAnchorAt(const uint256 &rt, ZCSaplingIncrementalMerkleTree &tree) const {
+bool CCoinsViewCache::GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &tree) const {
     CAnchorsSaplingMap::const_iterator it = cacheSaplingAnchors.find(rt);
     if (it != cacheSaplingAnchors.end()) {
         if (it->second.entered) {
@@ -222,8 +222,9 @@ void CCoinsViewCache::AbstractPushAnchor(
     }
 }
 
-void CCoinsViewCache::PushSproutAnchor(const ZCIncrementalMerkleTree &tree) {
-    AbstractPushAnchor<ZCIncrementalMerkleTree, CAnchorsSproutMap, CAnchorsSproutMap::iterator, CAnchorsSproutCacheEntry>(
+template<> void CCoinsViewCache::PushAnchor(const SproutMerkleTree &tree)
+{
+    AbstractPushAnchor<SproutMerkleTree, CAnchorsSproutMap, CAnchorsSproutMap::iterator, CAnchorsSproutCacheEntry>(
         tree,
         SPROUT,
         cacheSproutAnchors,
@@ -231,8 +232,9 @@ void CCoinsViewCache::PushSproutAnchor(const ZCIncrementalMerkleTree &tree) {
     );
 }
 
-void CCoinsViewCache::PushSaplingAnchor(const ZCSaplingIncrementalMerkleTree &tree) {
-    AbstractPushAnchor<ZCSaplingIncrementalMerkleTree, CAnchorsSaplingMap, CAnchorsSaplingMap::iterator, CAnchorsSaplingCacheEntry>(
+template<> void CCoinsViewCache::PushAnchor(const SaplingMerkleTree &tree)
+{
+    AbstractPushAnchor<SaplingMerkleTree, CAnchorsSaplingMap, CAnchorsSaplingMap::iterator, CAnchorsSaplingCacheEntry>(
         tree,
         SAPLING,
         cacheSaplingAnchors,
@@ -243,7 +245,7 @@ void CCoinsViewCache::PushSaplingAnchor(const ZCSaplingIncrementalMerkleTree &tr
 template<>
 void CCoinsViewCache::BringBestAnchorIntoCache(
     const uint256 &currentRoot,
-    ZCIncrementalMerkleTree &tree
+    SproutMerkleTree &tree
 )
 {
     assert(GetSproutAnchorAt(currentRoot, tree));
@@ -252,7 +254,7 @@ void CCoinsViewCache::BringBestAnchorIntoCache(
 template<>
 void CCoinsViewCache::BringBestAnchorIntoCache(
     const uint256 &currentRoot,
-    ZCSaplingIncrementalMerkleTree &tree
+    SaplingMerkleTree &tree
 )
 {
     assert(GetSaplingAnchorAt(currentRoot, tree));
@@ -293,7 +295,7 @@ void CCoinsViewCache::AbstractPopAnchor(
 void CCoinsViewCache::PopAnchor(const uint256 &newrt, ShieldedType type) {
     switch (type) {
         case SPROUT:
-            AbstractPopAnchor<ZCIncrementalMerkleTree, CAnchorsSproutMap, CAnchorsSproutCacheEntry>(
+            AbstractPopAnchor<SproutMerkleTree, CAnchorsSproutMap, CAnchorsSproutCacheEntry>(
                 newrt,
                 SPROUT,
                 cacheSproutAnchors,
@@ -301,7 +303,7 @@ void CCoinsViewCache::PopAnchor(const uint256 &newrt, ShieldedType type) {
             );
             break;
         case SAPLING:
-            AbstractPopAnchor<ZCSaplingIncrementalMerkleTree, CAnchorsSaplingMap, CAnchorsSaplingCacheEntry>(
+            AbstractPopAnchor<SaplingMerkleTree, CAnchorsSaplingMap, CAnchorsSaplingCacheEntry>(
                 newrt,
                 SAPLING,
                 cacheSaplingAnchors,
@@ -553,7 +555,7 @@ CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx) const
 
 bool CCoinsViewCache::HaveJoinSplitRequirements(const CTransaction& tx) const
 {
-    boost::unordered_map<uint256, ZCIncrementalMerkleTree, CCoinsKeyHasher> intermediates;
+    boost::unordered_map<uint256, SproutMerkleTree, CCoinsKeyHasher> intermediates;
 
     BOOST_FOREACH(const JSDescription &joinsplit, tx.vjoinsplit)
     {
@@ -566,7 +568,7 @@ bool CCoinsViewCache::HaveJoinSplitRequirements(const CTransaction& tx) const
             }
         }
 
-        ZCIncrementalMerkleTree tree;
+        SproutMerkleTree tree;
         auto it = intermediates.find(joinsplit.anchor);
         if (it != intermediates.end()) {
             tree = it->second;
@@ -586,7 +588,7 @@ bool CCoinsViewCache::HaveJoinSplitRequirements(const CTransaction& tx) const
         if (GetNullifier(spendDescription.nullifier, SAPLING)) // Prevent double spends
             return false;
 
-        ZCSaplingIncrementalMerkleTree tree;
+        SaplingMerkleTree tree;
         if (!GetSaplingAnchorAt(spendDescription.anchor, tree)) {
             return false;
         }
